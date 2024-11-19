@@ -1,6 +1,5 @@
-com\example\distfinalproject\presentation\ClientHandler.class
-com\example\distfinalproject\presentation\Server.class
-com\example\distfinalproject\presentation\HealthDashboard.class
-com\example\distfinalproject\presentation\HealthDashboard$1.class
-com\example\distfinalproject\presentation\HealthDashboard$ValueExtractor.class
-com\example\distfinalproject\presentation\HealthData.class
+com/example/distfinalproject/presentation/Server.class
+com/example/distfinalproject/presentation/ClientHandler.class
+com/example/distfinalproject/presentation/HealthData.class
+com/example/distfinalproject/presentation/HealthDashboard.class
+com/example/distfinalproject/presentation/HealthDashboard$1.class
