@@ -13,19 +13,11 @@ public class Server {
     private static final ConcurrentHashMap<String, ClientHandler> activeClients = new ConcurrentHashMap<>();
     private static final ScheduledExecutorService statusExecutor = Executors.newSingleThreadScheduledExecutor();
     public static void main(String[] args) {
-        // Create and show the dashboard
         SwingUtilities.invokeLater(() -> {
-            HealthDashboard dashboard = new HealthDashboard();
+            HealthDashboard dashboard = new HealthDashboard(); // create health dashboard
             dashboard.setVisible(true);
         });
-        // Start status updater
-        statusExecutor.scheduleAtFixedRate(() -> {
-            System.out.println("Current Connected Clients: " + activeClients.size());
-            if (!activeClients.isEmpty()) {
-                System.out.println("Connected Client IDs: " + String.join(", ", activeClients.keySet()));
-            }
-            System.out.println("------------------------");
-        }, 0, 5, TimeUnit.SECONDS);
+
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println("Server started on port " + PORT);
             System.out.println("Waiting for clients...");
