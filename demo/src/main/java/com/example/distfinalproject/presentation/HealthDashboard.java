@@ -23,8 +23,11 @@ import java.util.concurrent.TimeUnit;
 public class HealthDashboard extends JFrame {
     private static final ConcurrentHashMap<String, HealthData> latestData = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, LinkedList<HealthData>> historicalData = new ConcurrentHashMap<>();
-    private static final int MAX_HISTORY = 20;
+    private static final int MAX_HISTORY = 200;
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
+    private static final float HIGH_HEART_RATE_THRESHOLD = 120.0f;
+    private static final ConcurrentHashMap<String, JLabel> alertLabels = new ConcurrentHashMap<>();
+
 
     private final DefaultTableModel tableModel;
     private final JTable table;
@@ -162,24 +165,33 @@ public class HealthDashboard extends JFrame {
     }
 
     private JPanel createClientPanel(String userId) {
-        JPanel panel = new JPanel(new GridLayout(1, 2, 5, 5));
+        JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createTitledBorder("Client: " + userId));
-        panel.setPreferredSize(new Dimension(1100, 300));
-        panel.setMaximumSize(new Dimension(1100, 300));
-
-        // Create charts
+    
+        JPanel chartsPanel = new JPanel(new GridLayout(1, 2, 5, 5));
+        
+        // Add alert label
+        JLabel alertLabel = new JLabel(" ");
+        alertLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        alertLabels.put(userId, alertLabel);
+        panel.add(alertLabel, BorderLayout.NORTH);
+    
         TimeSeriesCollection heartRateDataset = new TimeSeriesCollection(new TimeSeries("Heart Rate"));
         TimeSeriesCollection stepsDataset = new TimeSeriesCollection(new TimeSeries("Steps"));
-
+    
         JFreeChart heartRateChart = createChart("Heart Rate Over Time", "Heart Rate (BPM)", heartRateDataset);
         JFreeChart stepsChart = createChart("Steps Over Time", "Steps", stepsDataset);
-
-        panel.add(new ChartPanel(heartRateChart));
-        panel.add(new ChartPanel(stepsChart));
-
+    
+        chartsPanel.add(new ChartPanel(heartRateChart));
+        chartsPanel.add(new ChartPanel(stepsChart));
+        
+        panel.add(chartsPanel, BorderLayout.CENTER);
+        panel.setPreferredSize(new Dimension(1100, 300));
+        panel.setMaximumSize(new Dimension(1100, 300));
+    
         return panel;
     }
-
+    
     private JFreeChart createChart(String title, String yAxisLabel, TimeSeriesCollection dataset) {
         JFreeChart chart = ChartFactory.createTimeSeriesChart(
             title,
@@ -202,26 +214,44 @@ public class HealthDashboard extends JFrame {
     }
 
     private void updateClientPanel(String userId, JPanel panel, List<HealthData> history) {
-        // Update heart rate chart
-        ChartPanel heartRatePanel = (ChartPanel) panel.getComponent(0);
+        JPanel chartsPanel = (JPanel) panel.getComponent(1); // Account for alert label
+        
+        ChartPanel heartRatePanel = (ChartPanel) chartsPanel.getComponent(0);
         TimeSeriesCollection heartRateDataset = (TimeSeriesCollection) heartRatePanel.getChart().getXYPlot().getDataset();
         TimeSeries heartRateSeries = heartRateDataset.getSeries(0);
         heartRateSeries.clear();
-
-        // Update steps chart
-        ChartPanel stepsPanel = (ChartPanel) panel.getComponent(1);
+    
+        ChartPanel stepsPanel = (ChartPanel) chartsPanel.getComponent(1);
         TimeSeriesCollection stepsDataset = (TimeSeriesCollection) stepsPanel.getChart().getXYPlot().getDataset();
         TimeSeries stepsSeries = stepsDataset.getSeries(0);
         stepsSeries.clear();
-
-        // Add new data points
+    
+        // Update data and check for high heart rate
+        boolean hasHighHeartRate = false;
         for (HealthData data : history) {
             Second second = new Second(new Date(data.getTimestamp()));
-            heartRateSeries.add(second, data.getHeartRate());
-            stepsSeries.add(second, data.getSteps());
+            heartRateSeries.addOrUpdate(second, data.getHeartRate());
+            stepsSeries.addOrUpdate(second, data.getSteps());
+            
+            if (data.getHeartRate() > HIGH_HEART_RATE_THRESHOLD) {
+                hasHighHeartRate = true;
+            }
+            else {
+                hasHighHeartRate = false;
+            }
+        }
+    
+        // Update alert label
+        JLabel alertLabel = alertLabels.get(userId);
+        if (hasHighHeartRate) {
+            alertLabel.setText("⚠️ HIGH HEART RATE ALERT");
+            alertLabel.setForeground(Color.RED);
+        } else {
+            alertLabel.setText("Heart Rate Normal");
+            alertLabel.setForeground(new Color(0, 128, 0)); // Dark green
         }
     }
-
+    
     public static void updateClientData(HealthData data) {
         String userId = data.getUserId();
         latestData.put(userId, data);
@@ -237,5 +267,6 @@ public class HealthDashboard extends JFrame {
     public static void removeClient(String userId) {
         latestData.remove(userId);
         historicalData.remove(userId);
+        alertLabels.remove(userId);
     }
-}
+    }
